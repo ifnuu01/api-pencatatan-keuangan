@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Transaction;
 use App\Models\Wallet;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Auth;
 
 class DashboardController extends Controller
 {
@@ -35,8 +36,9 @@ class DashboardController extends Controller
     {
 
         $colors = $this->colors;
-
+        $user = Auth::user();
         $transactions = Transaction::with(['category', 'wallet'])
+            ->where('user_id', $user->id)
             ->orderBy('transaction_date', 'desc')
             ->get();
 
@@ -78,7 +80,8 @@ class DashboardController extends Controller
                 ],
             ];
         });
-        $wallets = Wallet::all();
+        $wallets = Wallet::where('user_id', $user->id)
+            ->get(['id', 'name', 'balance', 'currency']);
         $saldo = $wallets->sum('balance');
 
         $totalPemasukan = $transactions->where('type', 'income')->sum('amount');
@@ -97,8 +100,9 @@ class DashboardController extends Controller
     public function charts()
     {
         $colors = $this->colors;
-
+        $user = Auth::user();
         $transactions = Transaction::with(['category', 'wallet'])
+            ->where('user_id', $user->id)
             ->orderBy('transaction_date', 'desc')
             ->get();
 

@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Transaction;
-use Illuminate\Support\Facades\Auth;
+use App\Http\Requests\TransactionRequest;
 use App\Models\Wallet;
 
 class TransactionController extends Controller
@@ -14,9 +14,8 @@ class TransactionController extends Controller
      */
     public function index()
     {
-        $user = Auth::user();
         $transactions = Transaction::with('category', 'wallet')
-            ->where('user_id', $user->id)
+            ->where('user_id', $this->getAuthUser()->id)
             ->orderBy('transaction_date', 'desc')
             ->get(['id', 'wallet_id', 'category_id', 'type', 'amount', 'description', 'transaction_date']);
 
@@ -35,17 +34,8 @@ class TransactionController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    public function store(TransactionRequest $request)
     {
-        $user = Auth::user();
-
-        $request->validate([
-            'wallet_id' => 'required|exists:wallets,id',
-            'category_id' => 'required|exists:categories,id',
-            'type' => 'required|in:income,expense',
-            'amount' => 'required|numeric|min:1',
-            'description' => 'nullable|string|max:50000',
-        ]);
 
         $wallet = Wallet::findOrFail($request->wallet_id);
 
@@ -58,7 +48,7 @@ class TransactionController extends Controller
         $wallet->save();
 
         Transaction::create([
-            'user_id' => $user->id,
+            'user_id' => $this->getAuthUser()->id,
             'wallet_id' => $wallet->id,
             'category_id' => $request->category_id,
             'type' => $request->type,
@@ -79,7 +69,7 @@ class TransactionController extends Controller
     public function show(string $id)
     {
         $transaction = Transaction::with('category', 'wallet')
-            ->where('user_id', Auth::id())
+            ->where('user_id', $this->getAuthUser()->id)
             ->find($id, ['id', 'wallet_id', 'category_id', 'type', 'amount', 'description', 'transaction_date']);
 
         if (!$transaction) {
@@ -101,9 +91,9 @@ class TransactionController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, string $id)
+    public function update(TransactionRequest $request, string $id)
     {
-        $transaction = Transaction::where('user_id', Auth::id())->find($id);
+        $transaction = Transaction::where('user_id', $this->getAuthUser()->id)->find($id);
 
         if (!$transaction) {
             return response()->json([
@@ -130,13 +120,7 @@ class TransactionController extends Controller
         $oldWallet->save();
         $newWallet->save();
 
-        $transaction->update([
-            'wallet_id' => $request->wallet_id,
-            'type' => $request->type,
-            'amount' => $request->amount,
-            'category_id' => $request->category_id,
-            'description' => $request->description,
-        ]);
+        $transaction->update($request->validated());
 
         return response()->json([
             'status' => true,
@@ -149,7 +133,7 @@ class TransactionController extends Controller
      */
     public function destroy(string $id)
     {
-        $transaction = Transaction::where('user_id', Auth::id())->find($id);
+        $transaction = Transaction::where('user_id', $this->getAuthUser()->id)->find($id);
 
         if (!$transaction) {
             return response()->json([

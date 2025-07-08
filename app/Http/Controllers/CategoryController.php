@@ -5,22 +5,16 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Http\Requests\CategoryRequest;
 use App\Models\Category;
-use Illuminate\Support\Facades\Auth;
 
 class CategoryController extends Controller
 {
     /**
      * Display a listing of the resource.
      */
-    private function getAuthUser()
-    {
-        return Auth::user();
-    }
 
     public function index()
     {
-        $user = $this->getAuthUser();
-        $categories = Category::where('user_id', $user->id)
+        $categories = Category::where('user_id', $this->getAuthUser()->id)
             ->orderBy('name', 'asc')
             ->get(['id', 'name', 'type', 'icon', 'color']);
 
@@ -36,10 +30,8 @@ class CategoryController extends Controller
      */
     public function store(CategoryRequest $request)
     {
-        $user = $this->getAuthUser();
-
         Category::create([
-            'user_id' => $user->id,
+            'user_id' => $this->getAuthUser()->id,
             'name' => $request->name,
             'type' => $request->type,
             'icon' => $request->icon ?? "fa fa-circle",
@@ -57,9 +49,7 @@ class CategoryController extends Controller
      */
     public function show(string $id)
     {
-        $user = $this->getAuthUser();
-
-        $category = Category::where('user_id', $user->id)->find($id);
+        $category = Category::where('user_id', $this->getAuthUser()->id)->find($id);
 
         if (!$category) {
             return response()->json([
@@ -80,9 +70,7 @@ class CategoryController extends Controller
      */
     public function update(CategoryRequest $request, string $id)
     {
-        $user = $this->getAuthUser();
-
-        $category = Category::where('user_id', $user->id)->find($id);
+        $category = Category::where('user_id', $this->getAuthUser()->id)->find($id);
 
         if (!$category) {
             return response()->json([
@@ -104,9 +92,7 @@ class CategoryController extends Controller
      */
     public function destroy(string $id)
     {
-        $user = $this->getAuthUser();
-
-        $category = Category::where('user_id', $user->id)->find($id);
+        $category = Category::where('user_id', $this->getAuthUser()->id)->find($id);
 
         if (!$category) {
             return response()->json([

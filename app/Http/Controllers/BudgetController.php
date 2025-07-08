@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Budget;
-use Illuminate\Support\Facades\Auth;
+use App\Http\Requests\BudgetRequest;
 use App\Models\Transaction;
 use Carbon\Carbon;
 
@@ -17,7 +17,7 @@ class BudgetController extends Controller
     {
 
         $budgets = Budget::with('category')
-            ->where('user_id', Auth::id())
+            ->where('user_id', $this->getAuthUser()->id)
             ->where('start_date', '<=', now())
             ->where('end_date', '>=', now())
             ->orderBy('start_date', 'desc')
@@ -54,7 +54,7 @@ class BudgetController extends Controller
             $periodStart = $periodStart->lessThan($budgetStart) ? $budgetStart : $periodStart;
             $periodEnd = $periodEnd->greaterThan($budgetEnd) ? $budgetEnd : $periodEnd;
 
-            $total_expense = Transaction::where('user_id', Auth::id())
+            $total_expense = Transaction::where('user_id', $this->getAuthUser()->id)
                 ->where('category_id', $budget->category_id)
                 ->where('type', 'expense')
                 ->whereBetween('transaction_date', [$periodStart, $periodEnd])
@@ -84,19 +84,11 @@ class BudgetController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    public function store(BudgetRequest $request)
     {
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'amount' => 'required|numeric|min:0',
-            'period' => 'required|in:daily,weekly,monthly,yearly',
-            'start_date' => 'required|date',
-            'end_date' => 'required|date|after_or_equal:start_date',
-            'category_id' => 'required|exists:categories,id',
-        ]);
 
         Budget::create([
-            'user_id' => Auth::id(),
+            'user_id' => $this->getAuthUser()->id,
             'name' => $request->name,
             'amount' => $request->amount,
             'period' => $request->period,
@@ -117,7 +109,7 @@ class BudgetController extends Controller
     public function show(string $id)
     {
         $budget = Budget::with('category')
-            ->where('user_id', Auth::id())
+            ->where('user_id', $this->getAuthUser()->id)
             ->find($id, ['id', 'name', 'amount', 'period', 'start_date', 'end_date', 'category_id']);
 
         if (!$budget) {
@@ -127,7 +119,7 @@ class BudgetController extends Controller
             ], 404);
         }
 
-        $total_expense = Transaction::where('user_id', Auth::id())
+        $total_expense = Transaction::where('user_id', $this->getAuthUser()->id)
             ->where('category_id', $budget->category_id)
             ->where('type', 'expense')
             ->whereBetween('transaction_date', [$budget->start_date, $budget->end_date])
@@ -157,7 +149,7 @@ class BudgetController extends Controller
      */
     public function update(Request $request, string $id)
     {
-        $budget = Budget::where('user_id', Auth::id())->find($id);
+        $budget = Budget::where('user_id', $this->getAuthUser()->id)->find($id);
 
         if (!$budget) {
             return response()->json([
@@ -166,16 +158,7 @@ class BudgetController extends Controller
             ], 404);
         }
 
-        $request->validate([
-            'name' => 'sometimes|required|string|max:255',
-            'amount' => 'sometimes|required|numeric|min:0',
-            'period' => 'sometimes|required|in:daily,weekly,monthly,yearly',
-            'start_date' => 'sometimes|required|date',
-            'end_date' => 'sometimes|required|date|after_or_equal:start_date',
-            'category_id' => 'sometimes|required|exists:categories,id',
-        ]);
-
-        $budget->update($request->only(['name', 'amount', 'period', 'start_date', 'end_date', 'category_id']));
+        $budget->update($request->validated());
 
         return response()->json([
             'status' => true,
@@ -188,7 +171,7 @@ class BudgetController extends Controller
      */
     public function destroy(string $id)
     {
-        $budget = Budget::where('user_id', Auth::id())->find($id);
+        $budget = Budget::where('user_id', $this->getAuthUser()->id)->find($id);
 
         if (!$budget) {
             return response()->json([

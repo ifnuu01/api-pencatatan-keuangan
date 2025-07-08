@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use App\Http\Requests\CategoryRequest;
 use App\Models\Category;
 use Illuminate\Support\Facades\Auth;
 
@@ -11,9 +12,14 @@ class CategoryController extends Controller
     /**
      * Display a listing of the resource.
      */
+    private function getAuthUser()
+    {
+        return Auth::user();
+    }
+
     public function index()
     {
-        $user = Auth::user();
+        $user = $this->getAuthUser();
         $categories = Category::where('user_id', $user->id)
             ->orderBy('name', 'asc')
             ->get(['id', 'name', 'type', 'icon', 'color']);
@@ -28,28 +34,17 @@ class CategoryController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    public function store(CategoryRequest $request)
     {
-        $user = Auth::user();
-
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'type' => 'required|in:income,expense',
-            'icon' => 'required|string|max:255',
-            'color' => 'required|string', // Assuming color is a hex code
-        ]);
-
-        // dd($request->all());
+        $user = $this->getAuthUser();
 
         Category::create([
             'user_id' => $user->id,
             'name' => $request->name,
             'type' => $request->type,
-            'icon' => $request->icon ?? "fa fa-circle", // Default icon if not provided
-            'color' => $request->color ?? '#000000', // Default color if not provided
+            'icon' => $request->icon ?? "fa fa-circle",
+            'color' => $request->color ?? '#000000',
         ]);
-
-
 
         return response()->json([
             'status' => true,
@@ -62,7 +57,7 @@ class CategoryController extends Controller
      */
     public function show(string $id)
     {
-        $user = Auth::user();
+        $user = $this->getAuthUser();
 
         $category = Category::where('user_id', $user->id)->find($id);
 
@@ -83,9 +78,9 @@ class CategoryController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, string $id)
+    public function update(CategoryRequest $request, string $id)
     {
-        $user = Auth::user();
+        $user = $this->getAuthUser();
 
         $category = Category::where('user_id', $user->id)->find($id);
 
@@ -96,12 +91,7 @@ class CategoryController extends Controller
             ], 404);
         }
 
-        $category->update([
-            'name' => $request->input('name'),
-            'type' => $request->input('type'),
-            'icon' => $request->input('icon'),
-            'color' => $request->input('color'),
-        ]);
+        $category->update($request->validated());
 
         return response()->json([
             'status' => true,
@@ -114,7 +104,7 @@ class CategoryController extends Controller
      */
     public function destroy(string $id)
     {
-        $user = Auth::user();
+        $user = $this->getAuthUser();
 
         $category = Category::where('user_id', $user->id)->find($id);
 
